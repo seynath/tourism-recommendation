@@ -1,0 +1,4 @@
+# file: /Users/seynaththenura/Downloads/Projects/nalaya/src/recommender_system.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.2, 0.3, 0.5, 0.7, 7.8731, 28.0, 70.0, 80.7718, 500, 1000, '*.csv', 'No review data found', 'Reviews.csv', 'cold_start', 'collaborative', 'collaborative_filter', 'content_based', 'content_based_filter', 'context_aware', 'context_aware_engine', 'data_cache.pkl.gz', 'day_of_week', 'dry', 'frequent', 'humidity', 'is_dry_season', 'is_holiday', 'is_inter_monsoon', 'is_monsoon', 'is_peak_season', 'is_rainy', 'is_stormy', 'is_sunny', 'location_features', 'max_depth', 'max_features', 'model_type', 'n_destinations', 'n_factors', 'n_locations', 'n_users', 'precipitation_chance', 'rating', 'regular', 'reviews_2', 'sunny', 'temperature', 'total', 'travel_date', 'user_profiles', 'weighted']

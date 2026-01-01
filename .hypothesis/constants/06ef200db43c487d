@@ -1,0 +1,4 @@
+# file: /Users/seynaththenura/Downloads/Projects/nalaya/src/recommender_api.py
+# hypothesis_version: 6.148.8
+
+[0.3, 0.4, 0.6, 1.0, 4.0, 50.0, 150.0, 500.0, 1000.0, 6371.0, ', ', '.', 'beach', 'budget', 'cloudy', 'cold_start', 'context', 'cultural', 'error', 'inf', 'luxury', 'mid-range', 'n_candidates', 'popular_destinations', 'season', 'sunny', 'unknown', 'user_id', 'user_type', 'weather']

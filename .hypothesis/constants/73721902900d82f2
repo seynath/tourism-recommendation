@@ -1,0 +1,4 @@
+# file: /Users/seynaththenura/Downloads/Projects/nalaya/src/content_based_filter.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.4, 0.5, 0.6, 1.0, 5.0, 500, 1024, '(?u)\\b\\w+\\b', 'empty vocabulary', 'english', 'l2', 'preferred_attributes', 'preferred_types', 'toarray']

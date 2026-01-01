@@ -1,0 +1,4 @@
+# file: /Users/seynaththenura/Downloads/Projects/nalaya/src/logger.py
+# hypothesis_version: 6.148.8
+
+[0.0, '%Y-%m-%d %H:%M:%S', 'budget', 'cache_name', 'cache_stats', 'context', 'details', 'error', 'error_message', 'error_type', 'event', 'fallback_triggered', 'fallback_type', 'group_size', 'hit_rate', 'hits', 'invalid_count', 'latency_ms', 'location', 'misses', 'model_name', 'model_prediction', 'prediction_count', 'reason', 'recommendation_count', 'request_id', 'request_received', 'response_sent', 'timestamp', 'total_latency_ms', 'tourism_recommender', 'travel_style', 'user_id', 'validation_error', 'validation_type']

@@ -1,0 +1,4 @@
+# file: /Users/seynaththenura/Downloads/Projects/nalaya/src/mobile_optimizer.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.5, 1.0, 127.0, 100, 3600, 'embeddings', 'item_factors', 'user_factors']

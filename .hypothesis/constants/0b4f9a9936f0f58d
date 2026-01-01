@@ -1,0 +1,4 @@
+# file: /Users/seynaththenura/Downloads/Projects/nalaya/src/context_aware_engine.py
+# hypothesis_version: 6.148.8
+
+[0.0, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5, 0.7, 1.0, 3.0, 4.0, 100, 1024, 'beach', 'coastal', 'cold_start', 'cultural', 'dry', 'festival', 'hiking', 'historical', 'indoor', 'inter-monsoon', 'monsoon', 'museum', 'nature', 'normal', 'outdoor', 'peak_season', 'rainy', 'safari', 'stormy', 'sunny', 'temple', 'unknown', 'urban', 'water_sports', 'weather_critical', 'wildlife']

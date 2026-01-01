@@ -1,0 +1,4 @@
+# file: /Users/seynaththenura/Downloads/Projects/nalaya/src/ensemble_voting.py
+# hypothesis_version: 6.148.8
+
+[-0.2, -0.15, -0.1, 0.0, 0.1, 0.15, 0.2, 0.25, 0.35, 1.0, 'borda', 'cold_start', 'collaborative', 'confidence', 'content_based', 'context_aware', 'monsoon', 'neural', 'normal', 'peak_season', 'preferred_attributes', 'preferred_types', 'rainy', 'stormy', 'weather_critical', 'weighted']
