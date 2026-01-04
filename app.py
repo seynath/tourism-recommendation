@@ -8,6 +8,7 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 from src.recommender_system import RecommenderSystem
+from src.absa_api import register_absa_routes, ABSAService
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +19,24 @@ app.secret_key = os.getenv('SECRET_KEY', 'dev-secret-key')
 
 # Global recommender system instance
 recommender = None
+
+# Register ABSA API routes
+register_absa_routes(app)
+
+# Pre-initialize ABSA service in background
+import threading
+def init_absa_background():
+    """Initialize ABSA service in background thread."""
+    try:
+        print("🔄 Pre-initializing ABSA service...")
+        service = ABSAService.get_instance()
+        service.initialize()
+        print("✅ ABSA service ready!")
+    except Exception as e:
+        print(f"⚠️ ABSA init error: {e}")
+
+# Start background initialization
+threading.Thread(target=init_absa_background, daemon=True).start()
 
 
 def get_recommender():
@@ -36,6 +55,12 @@ def get_recommender():
 def index():
     """Serve the main frontend page."""
     return render_template('index.html')
+
+
+@app.route('/absa')
+def absa_page():
+    """Serve the ABSA frontend page."""
+    return render_template('absa.html')
 
 
 @app.route('/api/health', methods=['GET'])
@@ -217,7 +242,7 @@ def get_users():
 if __name__ == '__main__':
     host = os.getenv('API_HOST', '0.0.0.0')
     port = int(os.getenv('API_PORT', 5001))
-    debug = os.getenv('FLASK_DEBUG', '1') == '1'
+    debug = os.getenv('FLASK_DEBUG', '0') == '1'  # Disabled by default for faster startup
     
     print(f"Starting Tourism Recommender API on {host}:{port}")
     app.run(host=host, port=port, debug=debug)

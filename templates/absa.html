@@ -1,0 +1,1137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sri Lanka Tourism - Aspect-Based Sentiment Analysis</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #64748b;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-light: #f8fafc;
+            --bg-card: #ffffff;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+        }
+        
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+        }
+        
+        .navbar {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .navbar-brand {
+            color: white !important;
+            font-weight: 600;
+            font-size: 1.4rem;
+        }
+</style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">🌴 Sri Lanka Tourism Insights</a>
+            <div class="nav-links">
+                <a href="/" class="nav-link text-white">Recommender</a>
+                <a href="/absa" class="nav-link text-white active">Sentiment Analysis</a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); z-index: 9999; justify-content: center; align-items: center; flex-direction: column;">
+        <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p id="loading-message" class="mt-3 text-primary fw-bold">Loading...</p>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container-fluid py-4">
+        <!-- Header Stats -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">📍</div>
+                    <div class="stat-content">
+                        <h3 id="total-locations">76</h3>
+                        <p>Locations Analyzed</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">📝</div>
+                    <div class="stat-content">
+                        <h3 id="total-reviews">16,156</h3>
+                        <p>Reviews Processed</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">🎯</div>
+                    <div class="stat-content">
+                        <h3>7</h3>
+                        <p>Aspects Tracked</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-icon">⭐</div>
+                    <div class="stat-content">
+                        <h3 id="avg-rating">3.0</h3>
+                        <p>Avg Rating</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Tabs -->
+        <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#explore">
+                    🔍 Explore Locations
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#recommend">
+                    💡 Smart Recommendations
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#compare">
+                    ⚖️ Compare Locations
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link" data-bs-toggle="tab" data-bs-target="#analyze">
+                    📊 Analyze Review
+                </button>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content">
+            <!-- Explore Tab -->
+            <div class="tab-pane fade show active" id="explore">
+                <div class="row">
+                    <!-- Filters -->
+                    <div class="col-md-3">
+                        <div class="card filter-card">
+                            <div class="card-header">
+                                <h5>🔎 Filters</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Location Type</label>
+                                    <select class="form-select" id="filter-type">
+                                        <option value="">All Types</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Sort By</label>
+                                    <select class="form-select" id="filter-sort">
+                                        <option value="rating">Rating (High to Low)</option>
+                                        <option value="reviews">Most Reviews</option>
+                                        <option value="name">Name (A-Z)</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Min Rating</label>
+                                    <input type="range" class="form-range" id="filter-rating" min="0" max="5" step="0.5" value="0">
+                                    <span id="rating-value">0</span> / 5
+                                </div>
+                                <button class="btn btn-primary w-100" onclick="applyFilters()">Apply Filters</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Aspect Stats -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5>📊 Aspect Overview</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="aspect-stats-list"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Location List -->
+                    <div class="col-md-9">
+                        <div class="row" id="locations-grid">
+                            <!-- Locations will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recommend Tab -->
+            <div class="tab-pane fade" id="recommend">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>🎯 Your Preferences</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted">Select aspects you care about most:</p>
+                                
+                                <div class="aspect-selector mb-4">
+                                    <label class="form-label fw-bold text-success">✅ I want good:</label>
+                                    <div id="preferred-aspects" class="aspect-chips"></div>
+                                </div>
+                                
+                                <div class="aspect-selector mb-4">
+                                    <label class="form-label fw-bold text-danger">❌ I want to avoid issues with:</label>
+                                    <div id="avoid-aspects" class="aspect-chips"></div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Location Type (Optional)</label>
+                                    <select class="form-select" id="rec-type">
+                                        <option value="">Any Type</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Number of Results</label>
+                                    <input type="number" class="form-control" id="rec-limit" value="5" min="1" max="20">
+                                </div>
+                                
+                                <button class="btn btn-primary btn-lg w-100" onclick="getRecommendations()">
+                                    🔮 Get Recommendations
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Scenarios -->
+                        <div class="card mt-3">
+                            <div class="card-header">
+                                <h5>⚡ Quick Scenarios</h5>
+                            </div>
+                            <div class="card-body">
+                                <button class="btn btn-outline-primary w-100 mb-2" onclick="setScenario('photography')">
+                                    📸 Photography Enthusiast
+                                </button>
+                                <button class="btn btn-outline-primary w-100 mb-2" onclick="setScenario('family')">
+                                    👨‍👩‍👧‍👦 Family with Kids
+                                </button>
+                                <button class="btn btn-outline-primary w-100 mb-2" onclick="setScenario('budget')">
+                                    💰 Budget Traveler
+                                </button>
+                                <button class="btn btn-outline-primary w-100" onclick="setScenario('adventure')">
+                                    🧗 Adventure Seeker
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <div id="recommendations-results">
+                            <div class="empty-state">
+                                <div class="empty-icon">🗺️</div>
+                                <h4>Select your preferences</h4>
+                                <p>Choose what matters to you and we'll find the perfect destinations!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Compare Tab -->
+            <div class="tab-pane fade" id="compare">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>⚖️ Select Locations to Compare</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label">Location 1</label>
+                                    <select class="form-select" id="compare-loc1"></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Location 2</label>
+                                    <select class="form-select" id="compare-loc2"></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Location 3 (Optional)</label>
+                                    <select class="form-select" id="compare-loc3">
+                                        <option value="">-- None --</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary w-100" onclick="compareLocations()">
+                                    📊 Compare Now
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-8">
+                        <div id="comparison-results">
+                            <div class="empty-state">
+                                <div class="empty-icon">⚖️</div>
+                                <h4>Compare Locations</h4>
+                                <p>Select 2-3 locations to see a detailed comparison across all aspects.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Analyze Tab -->
+            <div class="tab-pane fade" id="analyze">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5>📝 Enter Review Text</h5>
+                            </div>
+                            <div class="card-body">
+                                <textarea class="form-control" id="review-text" rows="6" 
+                                    placeholder="Paste a review here to analyze its sentiment by aspect..."></textarea>
+                                <button class="btn btn-primary mt-3" onclick="analyzeReview()">
+                                    🔍 Analyze Sentiment
+                                </button>
+                                
+                                <div class="mt-3">
+                                    <label class="form-label">Or try an example:</label>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" onclick="setExample('positive')">
+                                        😊 Positive
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary me-2" onclick="setExample('negative')">
+                                        😞 Negative
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="setExample('mixed')">
+                                        🤔 Mixed
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div id="analysis-results">
+                            <div class="empty-state">
+                                <div class="empty-icon">📊</div>
+                                <h4>Aspect Analysis</h4>
+                                <p>Enter a review to see sentiment breakdown by aspect.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Detail Modal -->
+    <div class="modal fade" id="locationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modal-location-name">Location Name</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="location-meta mb-3">
+                                <span class="badge bg-primary" id="modal-location-type">Type</span>
+                                <span class="rating-badge" id="modal-rating">⭐ 0.0</span>
+                                <span class="text-muted" id="modal-reviews">0 reviews</span>
+                            </div>
+                            
+                            <div class="strengths-weaknesses">
+                                <div class="strengths mb-3">
+                                    <h6>✅ Strengths</h6>
+                                    <div id="modal-strengths"></div>
+                                </div>
+                                <div class="weaknesses">
+                                    <h6>⚠️ Areas to Improve</h6>
+                                    <div id="modal-weaknesses"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>📊 Aspect Scores</h6>
+                            <canvas id="aspectRadarChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h6>📈 Detailed Aspect Breakdown</h6>
+                    <div id="modal-aspect-bars"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Styles -->
+    <style>
+        .nav-links { display: flex; gap: 1rem; }
+        .nav-link { text-decoration: none; padding: 0.5rem 1rem; border-radius: 5px; transition: all 0.2s; }
+        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.2); }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .stat-icon { font-size: 2.5rem; }
+        .stat-content h3 { margin: 0; font-size: 1.8rem; color: var(--primary); }
+        .stat-content p { margin: 0; color: var(--text-secondary); font-size: 0.9rem; }
+        
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .card-header { background: white; border-bottom: 1px solid var(--border); font-weight: 600; }
+        
+        .location-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .location-card:hover { transform: translateY(-3px); box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        .location-card h5 { margin-bottom: 0.5rem; }
+        .location-card .type-badge { font-size: 0.75rem; background: #e0e7ff; color: var(--primary); padding: 0.25rem 0.5rem; border-radius: 4px; }
+        .location-card .rating { font-weight: 600; color: var(--warning); }
+        .location-card .reviews { color: var(--text-secondary); font-size: 0.85rem; }
+        
+        .aspect-bar { margin-bottom: 0.75rem; }
+        .aspect-bar-label { display: flex; justify-content: space-between; margin-bottom: 0.25rem; font-size: 0.85rem; }
+        .aspect-bar-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .aspect-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+        .aspect-bar-fill.positive { background: linear-gradient(90deg, #22c55e, #4ade80); }
+        .aspect-bar-fill.negative { background: linear-gradient(90deg, #ef4444, #f87171); }
+        .aspect-bar-fill.neutral { background: linear-gradient(90deg, #94a3b8, #cbd5e1); }
+        
+        .aspect-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+        .aspect-chip {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 2px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .aspect-chip:hover { border-color: var(--primary); }
+        .aspect-chip.selected { background: var(--primary); color: white; border-color: var(--primary); }
+        .aspect-chip.selected-avoid { background: var(--danger); color: white; border-color: var(--danger); }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+        .empty-state .empty-icon { font-size: 4rem; margin-bottom: 1rem; }
+        
+        .recommendation-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-left: 4px solid var(--primary);
+        }
+        .recommendation-card .rank { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .recommendation-card .match-score { background: #dcfce7; color: #166534; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.85rem; }
+        .recommendation-card .highlights { margin-top: 0.75rem; }
+        .recommendation-card .highlight { display: inline-block; background: #f0fdf4; color: #166534; padding: 0.25rem 0.5rem; border-radius: 4px; margin-right: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem; }
+        .recommendation-card .warning { display: inline-block; background: #fef2f2; color: #991b1b; padding: 0.25rem 0.5rem; border-radius: 4px; margin-right: 0.5rem; margin-bottom: 0.5rem; font-size: 0.8rem; }
+        
+        .comparison-table { width: 100%; }
+        .comparison-table th { background: var(--bg-light); padding: 0.75rem; text-align: left; }
+        .comparison-table td { padding: 0.75rem; border-bottom: 1px solid var(--border); }
+        .comparison-table .score-cell { text-align: center; }
+        .comparison-table .score-positive { color: var(--success); font-weight: 600; }
+        .comparison-table .score-negative { color: var(--danger); font-weight: 600; }
+        
+        .analysis-aspect {
+            background: white;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid var(--border);
+        }
+        .analysis-aspect.positive { border-left-color: var(--success); }
+        .analysis-aspect.negative { border-left-color: var(--danger); }
+        .analysis-aspect.neutral { border-left-color: var(--secondary); }
+        .analysis-aspect .aspect-name { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+        .analysis-aspect .sentiment-badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; border-radius: 4px; }
+        .analysis-aspect .sentiment-badge.positive { background: #dcfce7; color: #166534; }
+        .analysis-aspect .sentiment-badge.negative { background: #fef2f2; color: #991b1b; }
+        .analysis-aspect .sentiment-badge.neutral { background: #f1f5f9; color: #475569; }
+        .analysis-aspect .keywords { margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); }
+        .analysis-aspect .snippet { margin-top: 0.5rem; font-style: italic; color: var(--text-secondary); font-size: 0.85rem; }
+        
+        .rating-badge { background: #fef3c7; color: #92400e; padding: 0.25rem 0.75rem; border-radius: 20px; font-weight: 600; }
+        
+        .nav-tabs .nav-link { color: var(--text-secondary); border: none; padding: 0.75rem 1.5rem; }
+        .nav-tabs .nav-link.active { color: var(--primary); border-bottom: 3px solid var(--primary); font-weight: 600; }
+        
+        .strength-badge { display: inline-block; background: #dcfce7; color: #166534; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem; font-size: 0.85rem; }
+        .weakness-badge { display: inline-block; background: #fef2f2; color: #991b1b; padding: 0.25rem 0.5rem; border-radius: 4px; margin: 0.25rem; font-size: 0.85rem; }
+    </style>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Global state
+        let allLocations = [];
+        let allAspects = [];
+        let selectedPreferred = [];
+        let selectedAvoid = [];
+        let radarChart = null;
+        let isLoading = false;
+        
+        // API Base URL
+        const API_BASE = '/api/absa';
+        
+        // Show loading overlay
+        function showLoading(message = 'Loading...') {
+            const overlay = document.getElementById('loading-overlay');
+            const msg = document.getElementById('loading-message');
+            if (overlay) {
+                msg.textContent = message;
+                overlay.style.display = 'flex';
+            }
+        }
+        
+        // Hide loading overlay
+        function hideLoading() {
+            const overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading('Initializing ABSA system (this may take a minute on first load)...');
+            try {
+                await loadAspects();
+                await loadLocationsWithRetry();
+                await loadAspectStats();
+                await loadLocationTypes();
+                setupEventListeners();
+            } catch (err) {
+                console.error('Initialization error:', err);
+                alert('Error loading data. Please refresh the page.');
+            }
+            hideLoading();
+        });
+        
+        // Load aspects
+        async function loadAspects() {
+            try {
+                const res = await fetch(`${API_BASE}/aspects`);
+                const data = await res.json();
+                if (data.success) {
+                    allAspects = data.data;
+                    renderAspectChips();
+                }
+            } catch (err) {
+                console.error('Error loading aspects:', err);
+            }
+        }
+        
+        // Load all locations with retry
+        async function loadLocationsWithRetry(retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    showLoading(`Loading locations (attempt ${i + 1}/${retries})...`);
+                    const res = await fetch(`${API_BASE}/locations`, {
+                        signal: AbortSignal.timeout(120000) // 2 minute timeout
+                    });
+                    const data = await res.json();
+                    if (data.success && data.data && data.data.length > 0) {
+                        allLocations = data.data;
+                        renderLocations(allLocations);
+                        populateCompareDropdowns();
+                        document.getElementById('total-locations').textContent = allLocations.length;
+                        return;
+                    } else if (data.data && data.data.length === 0) {
+                        // Service still initializing, wait and retry
+                        showLoading('Service initializing, please wait...');
+                        await new Promise(r => setTimeout(r, 5000));
+                    }
+                } catch (err) {
+                    console.error(`Attempt ${i + 1} failed:`, err);
+                    if (i < retries - 1) {
+                        await new Promise(r => setTimeout(r, 3000));
+                    }
+                }
+            }
+            // Show empty state if all retries failed
+            renderLocations([]);
+        }
+        
+        // Load all locations (simple version)
+        async function loadLocations() {
+            await loadLocationsWithRetry();
+        }
+        
+        // Load aspect statistics
+        async function loadAspectStats() {
+            try {
+                const res = await fetch(`${API_BASE}/aspects/stats`);
+                const data = await res.json();
+                if (data.success) {
+                    renderAspectStats(data.data);
+                }
+            } catch (err) {
+                console.error('Error loading aspect stats:', err);
+            }
+        }
+        
+        // Load location types
+        async function loadLocationTypes() {
+            try {
+                const res = await fetch(`${API_BASE}/types`);
+                const data = await res.json();
+                if (data.success) {
+                    const select = document.getElementById('filter-type');
+                    const recSelect = document.getElementById('rec-type');
+                    data.data.forEach(t => {
+                        select.innerHTML += `<option value="${t.type}">${t.type} (${t.count})</option>`;
+                        recSelect.innerHTML += `<option value="${t.type}">${t.type}</option>`;
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading types:', err);
+            }
+        }
+
+        // Render locations grid
+        function renderLocations(locations) {
+            const grid = document.getElementById('locations-grid');
+            
+            if (!locations || locations.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-12">
+                        <div class="empty-state">
+                            <div class="empty-icon">⏳</div>
+                            <h4>Loading locations...</h4>
+                            <p>The system is analyzing reviews. This may take a minute on first load.</p>
+                            <button class="btn btn-primary mt-3" onclick="loadLocationsWithRetry()">
+                                🔄 Retry Loading
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            grid.innerHTML = locations.map(loc => `
+                <div class="col-md-4">
+                    <div class="location-card" onclick="showLocationDetail('${loc.name}')">
+                        <h5>${loc.name}</h5>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="type-badge">${loc.type}</span>
+                            <div>
+                                <span class="rating">⭐ ${loc.rating.toFixed(1)}</span>
+                                <span class="reviews">(${loc.total_reviews} reviews)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Render aspect stats
+        function renderAspectStats(stats) {
+            const container = document.getElementById('aspect-stats-list');
+            container.innerHTML = stats.map(s => `
+                <div class="aspect-bar">
+                    <div class="aspect-bar-label">
+                        <span>${s.icon} ${s.display_name}</span>
+                        <span>${s.avg_sentiment > 0 ? '+' : ''}${s.avg_sentiment.toFixed(2)}</span>
+                    </div>
+                    <div class="aspect-bar-track">
+                        <div class="aspect-bar-fill ${s.avg_sentiment > 0.1 ? 'positive' : s.avg_sentiment < -0.1 ? 'negative' : 'neutral'}" 
+                             style="width: ${((s.avg_sentiment + 1) / 2 * 100).toFixed(0)}%"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Render aspect chips for recommendations
+        function renderAspectChips() {
+            const preferredContainer = document.getElementById('preferred-aspects');
+            const avoidContainer = document.getElementById('avoid-aspects');
+            
+            preferredContainer.innerHTML = allAspects.map(a => `
+                <div class="aspect-chip" data-aspect="${a.key}" onclick="togglePreferred('${a.key}')">
+                    ${a.icon} ${a.display_name}
+                </div>
+            `).join('');
+            
+            avoidContainer.innerHTML = allAspects.map(a => `
+                <div class="aspect-chip" data-aspect="${a.key}" onclick="toggleAvoid('${a.key}')">
+                    ${a.icon} ${a.display_name}
+                </div>
+            `).join('');
+        }
+        
+        // Toggle preferred aspect
+        function togglePreferred(aspect) {
+            const chip = document.querySelector(`#preferred-aspects .aspect-chip[data-aspect="${aspect}"]`);
+            if (selectedPreferred.includes(aspect)) {
+                selectedPreferred = selectedPreferred.filter(a => a !== aspect);
+                chip.classList.remove('selected');
+            } else {
+                selectedPreferred.push(aspect);
+                chip.classList.add('selected');
+            }
+        }
+        
+        // Toggle avoid aspect
+        function toggleAvoid(aspect) {
+            const chip = document.querySelector(`#avoid-aspects .aspect-chip[data-aspect="${aspect}"]`);
+            if (selectedAvoid.includes(aspect)) {
+                selectedAvoid = selectedAvoid.filter(a => a !== aspect);
+                chip.classList.remove('selected-avoid');
+            } else {
+                selectedAvoid.push(aspect);
+                chip.classList.add('selected-avoid');
+            }
+        }
+
+        // Show location detail modal
+        async function showLocationDetail(locationName) {
+            try {
+                const res = await fetch(`${API_BASE}/locations/${encodeURIComponent(locationName)}/aspects`);
+                const data = await res.json();
+                
+                if (!data.success) {
+                    alert('Error loading location details');
+                    return;
+                }
+                
+                const loc = data.data;
+                const insight = allLocations.find(l => l.name === locationName);
+                
+                // Update modal content
+                document.getElementById('modal-location-name').textContent = locationName;
+                document.getElementById('modal-location-type').textContent = insight?.type || 'Unknown';
+                document.getElementById('modal-rating').textContent = `⭐ ${insight?.rating?.toFixed(1) || '0.0'}`;
+                document.getElementById('modal-reviews').textContent = `${insight?.total_reviews || 0} reviews`;
+                
+                // Strengths
+                const strengthsDiv = document.getElementById('modal-strengths');
+                strengthsDiv.innerHTML = loc.strengths.length > 0 
+                    ? loc.strengths.map(s => `<span class="strength-badge">${s}</span>`).join('')
+                    : '<span class="text-muted">No notable strengths</span>';
+                
+                // Weaknesses
+                const weaknessesDiv = document.getElementById('modal-weaknesses');
+                weaknessesDiv.innerHTML = loc.weaknesses.length > 0
+                    ? loc.weaknesses.map(w => `<span class="weakness-badge">${w}</span>`).join('')
+                    : '<span class="text-muted">No notable issues</span>';
+                
+                // Aspect bars
+                const barsDiv = document.getElementById('modal-aspect-bars');
+                barsDiv.innerHTML = loc.aspects.map(a => `
+                    <div class="aspect-bar">
+                        <div class="aspect-bar-label">
+                            <span>${a.icon} ${a.display_name}</span>
+                            <span>${a.mentions} mentions • ${a.score > 0 ? '+' : ''}${a.score.toFixed(2)}</span>
+                        </div>
+                        <div class="aspect-bar-track">
+                            <div class="aspect-bar-fill ${a.sentiment}" style="width: ${(a.score_normalized * 100).toFixed(0)}%"></div>
+                        </div>
+                    </div>
+                `).join('');
+                
+                // Radar chart
+                renderRadarChart(loc.aspects);
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('locationModal'));
+                modal.show();
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        }
+        
+        // Render radar chart
+        function renderRadarChart(aspects) {
+            const ctx = document.getElementById('aspectRadarChart').getContext('2d');
+            
+            if (radarChart) {
+                radarChart.destroy();
+            }
+            
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: aspects.map(a => a.display_name),
+                    datasets: [{
+                        label: 'Aspect Score',
+                        data: aspects.map(a => a.score_normalized),
+                        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: 'rgba(37, 99, 235, 1)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 1,
+                            ticks: { stepSize: 0.2 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Get recommendations
+        async function getRecommendations() {
+            if (selectedPreferred.length === 0) {
+                alert('Please select at least one preferred aspect');
+                return;
+            }
+            
+            const locType = document.getElementById('rec-type').value;
+            const limit = parseInt(document.getElementById('rec-limit').value) || 5;
+            
+            try {
+                const res = await fetch(`${API_BASE}/recommend`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        preferred_aspects: selectedPreferred,
+                        avoid_aspects: selectedAvoid,
+                        location_type: locType || null,
+                        limit: limit
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderRecommendations(data.data);
+                }
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        }
+        
+        // Render recommendations
+        function renderRecommendations(recs) {
+            const container = document.getElementById('recommendations-results');
+            
+            if (recs.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">😕</div>
+                        <h4>No matches found</h4>
+                        <p>Try adjusting your preferences or removing some filters.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = recs.map((rec, i) => `
+                <div class="recommendation-card" onclick="showLocationDetail('${rec.location}')">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="rank">#${i + 1}</span>
+                            <h5 class="d-inline ms-2">${rec.location}</h5>
+                            <span class="badge bg-secondary ms-2">${rec.type}</span>
+                        </div>
+                        <div>
+                            <span class="match-score">Match: ${(rec.match_score * 100).toFixed(0)}%</span>
+                            <span class="rating-badge ms-2">⭐ ${rec.rating.toFixed(1)}</span>
+                        </div>
+                    </div>
+                    <div class="highlights">
+                        ${rec.highlights.map(h => `<span class="highlight">✅ ${h}</span>`).join('')}
+                        ${rec.warnings.map(w => `<span class="warning">⚠️ ${w}</span>`).join('')}
+                    </div>
+                    <div class="text-muted mt-2" style="font-size: 0.85rem;">
+                        ${rec.total_reviews} reviews • Matches: ${rec.matching_aspects.join(', ')}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Set scenario presets
+        function setScenario(scenario) {
+            // Clear current selections
+            selectedPreferred = [];
+            selectedAvoid = [];
+            document.querySelectorAll('.aspect-chip').forEach(c => c.classList.remove('selected', 'selected-avoid'));
+            
+            switch(scenario) {
+                case 'photography':
+                    selectedPreferred = ['scenery', 'accessibility'];
+                    break;
+                case 'family':
+                    selectedPreferred = ['safety', 'facilities'];
+                    break;
+                case 'budget':
+                    selectedPreferred = ['value', 'experience'];
+                    break;
+                case 'adventure':
+                    selectedPreferred = ['experience', 'scenery'];
+                    break;
+            }
+            
+            // Update UI
+            selectedPreferred.forEach(a => {
+                document.querySelector(`#preferred-aspects .aspect-chip[data-aspect="${a}"]`)?.classList.add('selected');
+            });
+            
+            // Auto-run recommendations
+            getRecommendations();
+        }
+
+        // Populate compare dropdowns
+        function populateCompareDropdowns() {
+            const selects = ['compare-loc1', 'compare-loc2', 'compare-loc3'];
+            selects.forEach((id, i) => {
+                const select = document.getElementById(id);
+                if (i === 2) {
+                    select.innerHTML = '<option value="">-- None --</option>';
+                } else {
+                    select.innerHTML = '';
+                }
+                allLocations.forEach(loc => {
+                    select.innerHTML += `<option value="${loc.name}">${loc.name}</option>`;
+                });
+            });
+        }
+        
+        // Compare locations
+        async function compareLocations() {
+            const loc1 = document.getElementById('compare-loc1').value;
+            const loc2 = document.getElementById('compare-loc2').value;
+            const loc3 = document.getElementById('compare-loc3').value;
+            
+            const locations = [loc1, loc2];
+            if (loc3) locations.push(loc3);
+            
+            if (locations.length < 2) {
+                alert('Please select at least 2 locations');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/compare`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ locations })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderComparison(data.data);
+                }
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        }
+        
+        // Render comparison table
+        function renderComparison(data) {
+            const container = document.getElementById('comparison-results');
+            
+            const aspectKeys = Object.keys(allAspects.reduce((acc, a) => { acc[a.key] = true; return acc; }, {}));
+            
+            let html = `
+                <div class="card">
+                    <div class="card-body">
+                        <table class="comparison-table">
+                            <thead>
+                                <tr>
+                                    <th>Aspect</th>
+                                    ${data.locations.map(l => `<th>${l.name}</th>`).join('')}
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            // Add aspect rows
+            allAspects.forEach(aspect => {
+                html += `<tr>
+                    <td>${aspect.icon} ${aspect.display_name}</td>
+                    ${data.locations.map(l => {
+                        const score = l.aspect_scores[aspect.key] || 0;
+                        const cls = score > 0.1 ? 'score-positive' : score < -0.1 ? 'score-negative' : '';
+                        return `<td class="score-cell ${cls}">${score > 0 ? '+' : ''}${score.toFixed(2)}</td>`;
+                    }).join('')}
+                </tr>`;
+            });
+            
+            // Add overall row
+            html += `<tr style="font-weight: bold; background: #f8fafc;">
+                <td>Overall Score</td>
+                ${data.locations.map(l => `<td class="score-cell">${l.overall > 0 ? '+' : ''}${l.overall.toFixed(2)}</td>`).join('')}
+            </tr>`;
+            
+            // Add reviews row
+            html += `<tr>
+                <td>Total Reviews</td>
+                ${data.locations.map(l => `<td class="score-cell">${l.reviews}</td>`).join('')}
+            </tr>`;
+            
+            html += `</tbody></table></div></div>`;
+            
+            container.innerHTML = html;
+        }
+
+        // Analyze review
+        async function analyzeReview() {
+            const text = document.getElementById('review-text').value.trim();
+            
+            if (!text) {
+                alert('Please enter a review to analyze');
+                return;
+            }
+            
+            try {
+                const res = await fetch(`${API_BASE}/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderAnalysis(data.data);
+                }
+            } catch (err) {
+                console.error('Error:', err);
+            }
+        }
+        
+        // Render analysis results
+        function renderAnalysis(data) {
+            const container = document.getElementById('analysis-results');
+            
+            if (data.aspects_found.length === 0) {
+                container.innerHTML = `
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="empty-state">
+                                <div class="empty-icon">🤔</div>
+                                <h5>No aspects detected</h5>
+                                <p>The review doesn't contain recognizable tourism aspects. Try a more detailed review.</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="card">
+                    <div class="card-header">
+                        <h5>📊 Analysis Results</h5>
+                        <span class="badge bg-primary">${data.total_aspects} aspects found</span>
+                    </div>
+                    <div class="card-body">
+                        ${data.aspects_found.map(a => `
+                            <div class="analysis-aspect ${a.sentiment}">
+                                <div class="aspect-name">
+                                    ${a.icon} ${a.display_name}
+                                    <span class="sentiment-badge ${a.sentiment}">${a.sentiment} (${(a.confidence * 100).toFixed(0)}%)</span>
+                                </div>
+                                <div class="keywords">Keywords: ${a.keywords.join(', ')}</div>
+                                ${a.snippet ? `<div class="snippet">"${a.snippet}"</div>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Set example reviews
+        function setExample(type) {
+            const examples = {
+                positive: "Amazing place with stunning views! The scenery was breathtaking and perfect for photography. Very clean facilities and friendly staff. Definitely worth the visit and great value for money. Easy to access with good parking.",
+                negative: "Very disappointing experience. The place was overcrowded and dirty. Overpriced entrance fee and rude staff. Not safe for families with small children. Would not recommend visiting.",
+                mixed: "Beautiful scenery and great views for photography. However, the facilities were poorly maintained and the toilets were dirty. Staff was helpful but the place was too crowded. Parking was difficult to find. Worth visiting but go early morning."
+            };
+            
+            document.getElementById('review-text').value = examples[type];
+        }
+        
+        // Apply filters
+        function applyFilters() {
+            const type = document.getElementById('filter-type').value;
+            const sort = document.getElementById('filter-sort').value;
+            const minRating = parseFloat(document.getElementById('filter-rating').value);
+            
+            let filtered = [...allLocations];
+            
+            if (type) {
+                filtered = filtered.filter(l => l.type === type);
+            }
+            
+            if (minRating > 0) {
+                filtered = filtered.filter(l => l.rating >= minRating);
+            }
+            
+            switch(sort) {
+                case 'rating':
+                    filtered.sort((a, b) => b.rating - a.rating);
+                    break;
+                case 'reviews':
+                    filtered.sort((a, b) => b.total_reviews - a.total_reviews);
+                    break;
+                case 'name':
+                    filtered.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+            }
+            
+            renderLocations(filtered);
+        }
+        
+        // Setup event listeners
+        function setupEventListeners() {
+            document.getElementById('filter-rating').addEventListener('input', (e) => {
+                document.getElementById('rating-value').textContent = e.target.value;
+            });
+        }
+    </script>
+</body>
+</html>
