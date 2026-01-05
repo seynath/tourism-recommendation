@@ -1,20 +1,10 @@
 """
 API endpoints for Aspect-Based Sentiment Analysis.
 
-Provides REST API for:
-1. Location insights with aspect scores
-2. Smart recommendations based on preferences
-3. Location comparisons
-4. Aspect statistics
-5. ML-based sentiment analysis (NEW)
-6. Evaluation metrics and visualizations (NEW)
-
-For integration with tourism app.
+Standalone API for sentiment research (without recommender system).
 """
 
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
-import json
+from typing import Dict, List, Optional
 import threading
 import pandas as pd
 
@@ -26,36 +16,27 @@ from src.aspect_sentiment import (
 )
 from src.aspect_ml_service import AspectMLService
 
-# Global lock for initialization
 _init_lock = threading.Lock()
 _ml_lock = threading.Lock()
 
 
 class ABSAService:
-    """
-    Service class for ABSA functionality.
-    
-    Provides methods for API integration.
-    Uses class-level state for true singleton behavior.
-    Now includes ML-based sentiment analysis.
-    """
+    """Service class for ABSA functionality."""
     
     _instance = None
-    _pipeline = None  # Class-level pipeline
-    _loaded = False   # Class-level loaded flag
-    _ml_service = None  # ML service
-    _ml_trained = False  # ML models trained flag
-    _df = None  # Store dataframe for ML training
+    _pipeline = None
+    _loaded = False
+    _ml_service = None
+    _ml_trained = False
+    _df = None
     
     @classmethod
     def get_instance(cls) -> 'ABSAService':
-        """Get singleton instance."""
         if cls._instance is None:
             cls._instance = ABSAService()
         return cls._instance
     
     def __init__(self):
-        # Don't reset class-level state
         pass
     
     def initialize(self, csv_path: str = 'dataset/Reviews.csv'):
@@ -64,45 +45,25 @@ class ABSAService:
             if not ABSAService._loaded:
                 ABSAService._pipeline = ABSAPipeline()
                 ABSAService._pipeline.load_and_analyze(csv_path)
-                ABSAService._df = ABSAService._pipeline.df  # Store for ML training
+                ABSAService._df = ABSAService._pipeline.df
                 ABSAService._loaded = True
                 
-                # Initialize ML service
                 ABSAService._ml_service = AspectMLService.get_instance()
                 
-                # Try to load pre-trained models
                 if not ABSAService._ml_service.load_models():
-                    # Train models if not available
                     print("🔄 Training ML models...")
                     ABSAService._ml_service.train_models(ABSAService._df)
                 
                 ABSAService._ml_trained = ABSAService._ml_service.is_trained()
     
     def ensure_loaded(self):
-        """Ensure data is loaded."""
         if not ABSAService._loaded:
             print("🔄 Initializing ABSA service with data...")
             self.initialize()
             print("✅ ABSA service initialized")
     
-    @property
-    def _current_pipeline(self):
-        """Get the current pipeline."""
-        return ABSAService._pipeline
-    
-    # =========================================================================
-    # API Methods
-    # =========================================================================
-    
     def get_all_locations(self) -> List[Dict]:
-        """
-        Get list of all locations with basic info.
-        
-        Returns:
-            List of location summaries
-        """
         self.ensure_loaded()
-        
         if ABSAService._pipeline is None or ABSAService._pipeline.insights is None:
             return []
         
@@ -115,41 +76,18 @@ class ABSAService:
                 'total_reviews': insight.total_reviews,
                 'overall_sentiment': round(insight.overall_sentiment, 3)
             })
-        
-        # Sort by rating
         locations.sort(key=lambda x: x['rating'], reverse=True)
         return locations
     
     def get_location_insight(self, location_name: str) -> Optional[Dict]:
-        """
-        Get detailed insight for a specific location.
-        
-        Args:
-            location_name: Name of the location
-            
-        Returns:
-            Location insight dictionary or None
-        """
         self.ensure_loaded()
-        
         insight = ABSAService._pipeline.get_location_insight(location_name)
         if insight is None:
             return None
-        
         return self._insight_to_dict(insight)
     
     def get_location_aspects(self, location_name: str) -> Optional[Dict]:
-        """
-        Get aspect scores for a location (for charts/visualization).
-        
-        Args:
-            location_name: Name of the location
-            
-        Returns:
-            Aspect scores dictionary
-        """
         self.ensure_loaded()
-        
         insight = ABSAService._pipeline.get_location_insight(location_name)
         if insight is None:
             return None
@@ -161,12 +99,10 @@ class ABSAService:
                 'display_name': TOURISM_ASPECTS[aspect_key]['display_name'],
                 'icon': TOURISM_ASPECTS[aspect_key]['icon'],
                 'score': round(score, 3),
-                'score_normalized': round((score + 1) / 2, 3),  # 0-1 scale
+                'score_normalized': round((score + 1) / 2, 3),
                 'mentions': insight.aspect_counts.get(aspect_key, 0),
                 'sentiment': 'positive' if score > 0.2 else ('negative' if score < -0.2 else 'neutral')
             })
-        
-        # Sort by score
         aspects.sort(key=lambda x: x['score'], reverse=True)
         
         return {
@@ -176,29 +112,9 @@ class ABSAService:
             'weaknesses': insight.weaknesses
         }
     
-    def get_recommendations(
-        self,
-        preferred_aspects: List[str],
-        avoid_aspects: List[str] = None,
-        location_type: str = None,
-        min_reviews: int = 5,
-        limit: int = 10
-    ) -> List[Dict]:
-        """
-        Get smart recommendations based on user preferences.
-        
-        Args:
-            preferred_aspects: List of aspect keys user prefers
-            avoid_aspects: List of aspect keys to avoid
-            location_type: Filter by location type
-            min_reviews: Minimum reviews required
-            limit: Maximum recommendations to return
-            
-        Returns:
-            List of recommendation dictionaries
-        """
+    def get_recommendations(self, preferred_aspects: List[str], avoid_aspects: List[str] = None,
+                           location_type: str = None, min_reviews: int = 5, limit: int = 10) -> List[Dict]:
         self.ensure_loaded()
-        
         recs = ABSAService._pipeline.recommend(
             preferred_aspects=preferred_aspects,
             avoid_aspects=avoid_aspects,
@@ -219,29 +135,13 @@ class ABSAService:
                 'warnings': rec.warnings,
                 'total_reviews': insight.total_reviews if insight else 0
             })
-        
         return results
     
     def compare_locations(self, locations: List[str]) -> Dict:
-        """
-        Compare multiple locations across all aspects.
-        
-        Args:
-            locations: List of location names to compare
-            
-        Returns:
-            Comparison data dictionary
-        """
         self.ensure_loaded()
-        
         comparison_df = ABSAService._pipeline.compare(locations)
         
-        # Convert to structured format
-        comparison = {
-            'locations': [],
-            'aspects': list(TOURISM_ASPECTS.keys())
-        }
-        
+        comparison = {'locations': [], 'aspects': list(TOURISM_ASPECTS.keys())}
         for _, row in comparison_df.iterrows():
             loc_data = {
                 'name': row['Location'],
@@ -250,36 +150,24 @@ class ABSAService:
                 'reviews': row['Reviews'],
                 'aspect_scores': {}
             }
-            
             for aspect in TOURISM_ASPECTS:
                 display_name = TOURISM_ASPECTS[aspect]['display_name']
                 if display_name in row:
                     loc_data['aspect_scores'][aspect] = row[display_name]
-            
             comparison['locations'].append(loc_data)
-        
         return comparison
     
     def get_aspect_statistics(self) -> List[Dict]:
-        """
-        Get overall statistics for all aspects.
-        
-        Returns:
-            List of aspect statistics
-        """
         self.ensure_loaded()
-        
         stats_df = ABSAService._pipeline.get_aspect_statistics()
         
         stats = []
         for _, row in stats_df.iterrows():
-            # Find aspect key from display name
             aspect_key = None
             for key, config in TOURISM_ASPECTS.items():
                 if config['display_name'] == row['Aspect']:
                     aspect_key = key
                     break
-            
             stats.append({
                 'aspect': aspect_key,
                 'display_name': row['Aspect'],
@@ -288,148 +176,46 @@ class ABSAService:
                 'avg_sentiment': round(row['Avg Sentiment'], 3),
                 'sentiment_label': row['Sentiment']
             })
-        
         return stats
     
-    def get_top_locations_by_aspect(
-        self,
-        aspect: str,
-        limit: int = 10,
-        min_mentions: int = 3
-    ) -> List[Dict]:
-        """
-        Get top locations for a specific aspect.
-        
-        Args:
-            aspect: Aspect key (e.g., 'scenery', 'safety')
-            limit: Maximum locations to return
-            min_mentions: Minimum mentions required
-            
-        Returns:
-            List of top locations for the aspect
-        """
-        self.ensure_loaded()
-        
-        if aspect not in TOURISM_ASPECTS:
-            return []
-        
-        top_df = ABSAService._pipeline.get_top_locations_by_aspect(
-            aspect, top_n=limit, min_mentions=min_mentions
-        )
-        
-        results = []
-        for _, row in top_df.iterrows():
-            results.append({
-                'location': row['Location'],
-                'type': row['Type'],
-                'score': round(row['Score'], 3),
-                'mentions': int(row['Mentions']),
-                'total_reviews': int(row['Total Reviews'])
-            })
-        
-        return results
-    
     def get_location_types(self) -> List[Dict]:
-        """
-        Get all location types with counts.
-        
-        Returns:
-            List of location types
-        """
         self.ensure_loaded()
-        
         type_counts = {}
         for insight in ABSAService._pipeline.insights.values():
             loc_type = insight.location_type
-            if loc_type not in type_counts:
-                type_counts[loc_type] = 0
-            type_counts[loc_type] += 1
-        
-        return [
-            {'type': t, 'count': c}
-            for t, c in sorted(type_counts.items(), key=lambda x: x[1], reverse=True)
-        ]
+            type_counts[loc_type] = type_counts.get(loc_type, 0) + 1
+        return [{'type': t, 'count': c} for t, c in sorted(type_counts.items(), key=lambda x: x[1], reverse=True)]
     
     def get_available_aspects(self) -> List[Dict]:
-        """
-        Get list of available aspects for filtering.
-        
-        Returns:
-            List of aspect definitions
-        """
-        return [
-            {
-                'key': key,
-                'display_name': config['display_name'],
-                'icon': config['icon']
-            }
-            for key, config in TOURISM_ASPECTS.items()
-        ]
+        return [{'key': key, 'display_name': config['display_name'], 'icon': config['icon']}
+                for key, config in TOURISM_ASPECTS.items()]
     
     def analyze_review(self, text: str) -> Dict:
-        """
-        Analyze a single review text for aspects and sentiment.
-        
-        Args:
-            text: Review text to analyze
-            
-        Returns:
-            Analysis results
-        """
         self.ensure_loaded()
-        
         aspects = ABSAService._pipeline.analyzer.analyze_review(text)
-        
         return {
             'text': text,
-            'aspects_found': [
-                {
-                    'aspect': asp.aspect,
-                    'display_name': TOURISM_ASPECTS[asp.aspect]['display_name'],
-                    'icon': TOURISM_ASPECTS[asp.aspect]['icon'],
-                    'sentiment': asp.sentiment,
-                    'confidence': round(asp.confidence, 3),
-                    'keywords': asp.keywords_found,
-                    'snippet': asp.text_snippet
-                }
-                for asp in aspects
-            ],
+            'aspects_found': [{
+                'aspect': asp.aspect,
+                'display_name': TOURISM_ASPECTS[asp.aspect]['display_name'],
+                'icon': TOURISM_ASPECTS[asp.aspect]['icon'],
+                'sentiment': asp.sentiment,
+                'confidence': round(asp.confidence, 3),
+                'keywords': asp.keywords_found,
+                'snippet': asp.text_snippet
+            } for asp in aspects],
             'total_aspects': len(aspects)
         }
     
     def analyze_review_ml(self, text: str) -> Dict:
-        """
-        Analyze review using ML models (hybrid approach).
-        
-        Args:
-            text: Review text to analyze
-            
-        Returns:
-            ML analysis results with comparison
-        """
         self.ensure_loaded()
-        
         if not ABSAService._ml_trained or ABSAService._ml_service is None:
             return {'error': 'ML models not trained', 'aspects_found': []}
-        
         results = ABSAService._ml_service.analyze_review_ml(text)
-        
-        return {
-            'text': text,
-            'aspects_found': results,
-            'total_aspects': len(results),
-            'ml_enabled': True
-        }
+        return {'text': text, 'aspects_found': results, 'total_aspects': len(results), 'ml_enabled': True}
     
     def get_ml_evaluation_results(self) -> Dict:
-        """
-        Get ML model evaluation results.
-        
-        Returns:
-            Evaluation metrics for all aspects
-        """
         self.ensure_loaded()
-        
         if not ABSAService._ml_trained or ABSAService._ml_service is None:
             return {'error': 'ML models not trained', 'results': {}, 'ml_enabled': False}
         
@@ -439,7 +225,6 @@ class ABSAService:
             if not results:
                 return {'error': 'No evaluation results available', 'aspects': [], 'ml_enabled': False}
             
-            # Format for API response
             formatted = []
             for aspect, metrics in results.items():
                 if aspect not in TOURISM_ASPECTS:
@@ -448,7 +233,7 @@ class ABSAService:
                 # Convert class_distribution values to regular Python ints (numpy int64 not JSON serializable)
                 class_dist = metrics.get('class_distribution', {})
                 class_dist_clean = {k: int(v) for k, v in class_dist.items()}
-                
+                    
                 formatted.append({
                     'aspect': aspect,
                     'display_name': TOURISM_ASPECTS[aspect]['display_name'],
@@ -465,18 +250,11 @@ class ABSAService:
                     'class_distribution': class_dist_clean
                 })
             
-            # Sort by F1 score
             formatted.sort(key=lambda x: x['f1_score'], reverse=True)
             
-            # Calculate overall statistics
-            if formatted:
-                avg_accuracy = sum(r['accuracy'] for r in formatted) / len(formatted)
-                avg_f1 = sum(r['f1_score'] for r in formatted) / len(formatted)
-                total_samples = sum(r['total_samples'] for r in formatted)
-            else:
-                avg_accuracy = 0
-                avg_f1 = 0
-                total_samples = 0
+            avg_accuracy = sum(r['accuracy'] for r in formatted) / len(formatted) if formatted else 0
+            avg_f1 = sum(r['f1_score'] for r in formatted) / len(formatted) if formatted else 0
+            total_samples = sum(r['total_samples'] for r in formatted)
             
             return {
                 'aspects': formatted,
@@ -495,16 +273,9 @@ class ABSAService:
             return {'error': f'Error getting evaluation results: {str(e)}', 'traceback': traceback.format_exc(), 'ml_enabled': False}
     
     def get_research_export(self) -> Dict:
-        """
-        Export comprehensive research data for paper.
-        
-        Returns:
-            All data needed for research paper
-        """
         self.ensure_loaded()
         
         try:
-            # Get all insights
             insights_data = []
             for name, insight in ABSAService._pipeline.insights.items():
                 insight_dict = {
@@ -520,13 +291,9 @@ class ABSAService:
                     insight_dict[f'{asp}_count'] = insight.aspect_counts.get(asp, 0)
                 insights_data.append(insight_dict)
             
-            # Get aspect statistics
             aspect_stats = self.get_aspect_statistics()
-            
-            # Get ML evaluation
             ml_eval = self.get_ml_evaluation_results()
             
-            # Dataset statistics
             df = ABSAService._df
             dataset_stats = {
                 'total_reviews': len(df) if df is not None else 0,
@@ -541,26 +308,14 @@ class ABSAService:
                 'aspect_statistics': aspect_stats,
                 'ml_evaluation': ml_eval,
                 'location_insights': insights_data,
-                'aspects_definition': [
-                    {
-                        'key': key,
-                        'display_name': config['display_name'],
-                        'icon': config['icon'],
-                        'keywords_count': len(config['keywords'])
-                    }
-                    for key, config in TOURISM_ASPECTS.items()
-                ]
+                'aspects_definition': [{'key': key, 'display_name': config['display_name'], 'icon': config['icon'],
+                                       'keywords_count': len(config['keywords'])} for key, config in TOURISM_ASPECTS.items()]
             }
         except Exception as e:
             import traceback
             return {'error': f'Error exporting research data: {str(e)}', 'traceback': traceback.format_exc()}
     
-    # =========================================================================
-    # Helper Methods
-    # =========================================================================
-    
     def _insight_to_dict(self, insight: LocationInsight) -> Dict:
-        """Convert LocationInsight to dictionary."""
         return {
             'location_name': insight.location_name,
             'location_type': insight.location_type,
@@ -569,41 +324,26 @@ class ABSAService:
             'total_reviews': insight.total_reviews,
             'strengths': insight.strengths,
             'weaknesses': insight.weaknesses,
-            'aspect_scores': {
-                k: round(v, 3) for k, v in insight.aspect_scores.items()
-            },
+            'aspect_scores': {k: round(v, 3) for k, v in insight.aspect_scores.items()},
             'aspect_counts': insight.aspect_counts
         }
 
 
-# ============================================================================
-# Flask API Routes (for integration with app.py)
-# ============================================================================
-
 def register_absa_routes(app):
-    """
-    Register ABSA API routes with Flask app.
-    
-    Usage in app.py:
-        from src.absa_api import register_absa_routes
-        register_absa_routes(app)
-    """
+    """Register ABSA API routes with Flask app."""
     from flask import jsonify, request
     
     service = ABSAService.get_instance()
     
     @app.route('/api/absa/locations', methods=['GET'])
     def api_get_locations():
-        """Get all locations."""
         try:
-            locations = service.get_all_locations()
-            return jsonify({'success': True, 'data': locations})
+            return jsonify({'success': True, 'data': service.get_all_locations()})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/absa/locations/<location_name>', methods=['GET'])
     def api_get_location_insight(location_name):
-        """Get insight for a specific location."""
         try:
             insight = service.get_location_insight(location_name)
             if insight is None:
@@ -614,7 +354,6 @@ def register_absa_routes(app):
     
     @app.route('/api/absa/locations/<location_name>/aspects', methods=['GET'])
     def api_get_location_aspects(location_name):
-        """Get aspect scores for a location."""
         try:
             aspects = service.get_location_aspects(location_name)
             if aspects is None:
@@ -625,20 +364,13 @@ def register_absa_routes(app):
     
     @app.route('/api/absa/recommend', methods=['POST'])
     def api_get_recommendations():
-        """Get smart recommendations."""
         try:
             data = request.get_json()
-            
-            preferred = data.get('preferred_aspects', [])
-            avoid = data.get('avoid_aspects', [])
-            loc_type = data.get('location_type')
-            limit = data.get('limit', 10)
-            
             recs = service.get_recommendations(
-                preferred_aspects=preferred,
-                avoid_aspects=avoid,
-                location_type=loc_type,
-                limit=limit
+                preferred_aspects=data.get('preferred_aspects', []),
+                avoid_aspects=data.get('avoid_aspects', []),
+                location_type=data.get('location_type'),
+                limit=data.get('limit', 10)
             )
             return jsonify({'success': True, 'data': recs})
         except Exception as e:
@@ -646,102 +378,70 @@ def register_absa_routes(app):
     
     @app.route('/api/absa/compare', methods=['POST'])
     def api_compare_locations():
-        """Compare multiple locations."""
         try:
             data = request.get_json()
             locations = data.get('locations', [])
-            
             if len(locations) < 2:
                 return jsonify({'success': False, 'error': 'Need at least 2 locations'}), 400
-            
-            comparison = service.compare_locations(locations)
-            return jsonify({'success': True, 'data': comparison})
+            return jsonify({'success': True, 'data': service.compare_locations(locations)})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/absa/aspects', methods=['GET'])
     def api_get_aspects():
-        """Get available aspects."""
         try:
-            aspects = service.get_available_aspects()
-            return jsonify({'success': True, 'data': aspects})
+            return jsonify({'success': True, 'data': service.get_available_aspects()})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/absa/aspects/stats', methods=['GET'])
     def api_get_aspect_stats():
-        """Get aspect statistics."""
         try:
-            stats = service.get_aspect_statistics()
-            return jsonify({'success': True, 'data': stats})
-        except Exception as e:
-            return jsonify({'success': False, 'error': str(e)}), 500
-    
-    @app.route('/api/absa/aspects/<aspect>/top', methods=['GET'])
-    def api_get_top_by_aspect(aspect):
-        """Get top locations for an aspect."""
-        try:
-            limit = request.args.get('limit', 10, type=int)
-            top = service.get_top_locations_by_aspect(aspect, limit=limit)
-            return jsonify({'success': True, 'data': top})
+            return jsonify({'success': True, 'data': service.get_aspect_statistics()})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/absa/types', methods=['GET'])
     def api_get_location_types():
-        """Get location types."""
         try:
-            types = service.get_location_types()
-            return jsonify({'success': True, 'data': types})
+            return jsonify({'success': True, 'data': service.get_location_types()})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/absa/analyze', methods=['POST'])
     def api_analyze_review():
-        """Analyze a review text."""
         try:
             data = request.get_json()
             text = data.get('text', '')
-            
             if not text:
                 return jsonify({'success': False, 'error': 'No text provided'}), 400
-            
-            analysis = service.analyze_review(text)
-            return jsonify({'success': True, 'data': analysis})
+            return jsonify({'success': True, 'data': service.analyze_review(text)})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/absa/analyze/ml', methods=['POST'])
     def api_analyze_review_ml():
-        """Analyze a review using ML models (hybrid approach)."""
         try:
             data = request.get_json()
             text = data.get('text', '')
-            
             if not text:
                 return jsonify({'success': False, 'error': 'No text provided'}), 400
-            
-            analysis = service.analyze_review_ml(text)
-            return jsonify({'success': True, 'data': analysis})
+            return jsonify({'success': True, 'data': service.analyze_review_ml(text)})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/absa/ml/evaluation', methods=['GET'])
     def api_get_ml_evaluation():
-        """Get ML model evaluation results."""
         try:
-            results = service.get_ml_evaluation_results()
-            return jsonify({'success': True, 'data': results})
+            return jsonify({'success': True, 'data': service.get_ml_evaluation_results()})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
     @app.route('/api/absa/export/research', methods=['GET'])
     def api_export_research():
-        """Export comprehensive research data."""
         try:
-            data = service.get_research_export()
-            return jsonify({'success': True, 'data': data})
+            return jsonify({'success': True, 'data': service.get_research_export()})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)}), 500
     
-    print("✅ ABSA API routes registered (with ML endpoints)")
+    print("✅ ABSA API routes registered")
