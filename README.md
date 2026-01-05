@@ -1,301 +1,260 @@
-# Tourism Recommender System
+# Sri Lanka Tourism Sentiment Analysis System
 
-Lightweight Ensemble-Based Tourism Recommender System for Sri Lanka
+**Aspect-Based Sentiment Analysis with Smart Insights for Sri Lanka Tourism**
 
-## Overview
-
-This system combines three recommendation approaches using ensemble voting:
-- **Collaborative Filtering**: SVD-based matrix factorization for user-item predictions
-- **Content-Based Filtering**: TF-IDF similarity for destination matching
-- **Context-Aware Engine**: Decision tree rules for weather/season adjustments
-
-Optimized for mobile deployment with total model size under 25 MB and inference under 100ms.
-
-## Project Structure
-
-```
-.
-├── src/                    # Source code
-│   ├── __init__.py
-│   ├── data_models.py      # Core data classes and type definitions
-│   ├── data_processor.py   # Data loading and feature engineering
-│   ├── collaborative_filter.py  # SVD-based collaborative filtering
-│   ├── content_based_filter.py  # TF-IDF content-based filtering
-│   ├── context_aware_engine.py  # Weather/season context rules
-│   ├── ensemble_voting.py  # Voting strategies (weighted, Borda, confidence)
-│   ├── mobile_optimizer.py # Caching and model compression
-│   ├── recommender_api.py  # Main API interface
-│   ├── recommender_system.py  # End-to-end system orchestration
-│   ├── model_serializer.py # Model persistence
-│   ├── evaluation.py       # Metrics (NDCG, Hit Rate, diversity)
-│   └── logger.py           # Structured logging
-├── tests/                  # Test suite (109 tests)
-├── data/                   # Data storage
-├── models/                 # Trained model storage
-├── dataset/                # Raw dataset files
-├── scripts/                # Training scripts
-└── pyproject.toml          # Project configuration
-```
-
-## Installation
-
-Install dependencies using pip:
-
-```bash
-pip install -e .
-```
-
-For development dependencies:
-
-```bash
-pip install -e ".[dev]"
-```
-
-## Quick Start
-
-### 1. Train Models
-
-```python
-from src.recommender_system import RecommenderSystem
-
-# Initialize and train the system
-system = RecommenderSystem()
-system.load_data('dataset/')
-system.train()
-
-# Save trained models
-system.save_models('models/')
-```
-
-Or use the training script:
-
-```bash
-python scripts/train_models.py
-```
-
-### 2. Get Recommendations
-
-```python
-from src.recommender_system import RecommenderSystem
-from src.data_models import Context, WeatherInfo
-
-# Load pre-trained system
-system = RecommenderSystem()
-system.load_models('models/')
-
-# Create context
-context = Context(
-    location=(7.2906, 80.6337),  # Kandy coordinates
-    weather=WeatherInfo(
-        condition='sunny',
-        temperature=28.0,
-        humidity=65.0,
-        precipitation_chance=0.1
-    ),
-    season='dry',
-    day_of_week=5,  # Saturday
-    is_holiday=False,
-    is_peak_season=True,
-    user_type='regular'
-)
-
-# Get recommendations
-recommendations = system.get_recommendations(
-    user_id='user_123',
-    context=context,
-    top_k=10
-)
-
-for rec in recommendations:
-    print(f"{rec.name}: {rec.score:.2f} - {rec.explanation}")
-```
-
-### 3. Using the API
-
-```python
-from src.recommender_api import RecommenderAPI, RecommendationRequest
-
-# Initialize API
-api = RecommenderAPI(system.ensemble, system.optimizer)
-
-# Create request
-request = RecommendationRequest(
-    user_id='user_123',
-    location=(7.2906, 80.6337),
-    budget=(50.0, 200.0),  # USD range
-    travel_style='cultural',
-    group_size=2,
-    max_distance_km=100.0
-)
-
-# Get filtered recommendations
-recommendations = api.get_recommendations(request)
-```
-
-## Voting Strategies
-
-The ensemble supports three voting strategies:
-
-```python
-from src.ensemble_voting import EnsembleVotingSystem
-
-# Weighted voting (default)
-ensemble = EnsembleVotingSystem(models, strategy='weighted')
-
-# Borda count ranking
-ensemble = EnsembleVotingSystem(models, strategy='borda')
-
-# Confidence-based voting
-ensemble = EnsembleVotingSystem(models, strategy='confidence')
-```
-
-### Dynamic Weight Adjustment
-
-Weights automatically adjust based on context:
-- **Cold start users**: +0.2 content-based, -0.2 collaborative
-- **Weather-critical**: +0.15 context-aware
-- **Peak season**: +0.1 collaborative
-
-## Model Sizes
-
-| Model | Size | Limit |
-|-------|------|-------|
-| Collaborative Filter | ~4.2 MB | < 10 MB |
-| Content-Based Filter | ~0.15 MB | < 5 MB |
-| Context-Aware Engine | ~0.01 MB | < 3 MB |
-| **Total** | **~4.4 MB** | **< 25 MB** |
-
-## Evaluation Metrics
-
-```python
-from src.evaluation import EvaluationModule
-
-evaluator = EvaluationModule()
-
-# Compute metrics
-ndcg = evaluator.ndcg_at_k(predictions, ground_truth, k=10)
-hit_rate = evaluator.hit_rate_at_k(predictions, ground_truth, k=10)
-diversity = evaluator.diversity_score(recommendations, location_features)
-coverage = evaluator.coverage_score(recommendations, all_destinations)
-```
-
-## Dependencies
-
-- **pandas**: Data manipulation and CSV processing
-- **numpy**: Numerical computations
-- **scikit-learn**: Machine learning models (SVD, TF-IDF, Decision Trees)
-- **scipy**: Sparse matrix operations
-- **hypothesis**: Property-based testing framework
-- **pytest**: Unit testing framework
-
-## Testing
-
-Run all tests:
-
-```bash
-pytest
-```
-
-Run with verbose output:
-
-```bash
-pytest -v
-```
-
-Run specific test file:
-
-```bash
-pytest tests/test_ensemble_voting.py -v
-```
-
-Run tests with coverage:
-
-```bash
-pytest --cov=src --cov-report=html
-```
-
-## Development
-
-This project follows spec-driven development with property-based testing:
-- Requirements: `.kiro/specs/tourism-recommender-system/requirements.md`
-- Design: `.kiro/specs/tourism-recommender-system/design.md`
-- Tasks: `.kiro/specs/tourism-recommender-system/tasks.md`
-
-### Property-Based Tests
-
-The system includes 25 correctness properties validated using Hypothesis:
-- Data extraction completeness
-- Rating matrix normalization
-- Cold start confidence handling
-- Voting correctness (weighted, Borda, confidence)
-- Filter application correctness
-- Model serialization round-trip
-
-## License
-
-MIT License
+A machine learning system that analyzes 16,000+ tourism reviews to provide aspect-level sentiment insights and smart destination recommendations.
 
 ---
 
-## Web Frontend
+## 🎯 Features
 
-The system includes a web-based frontend for interactive testing and visualization.
+- **Aspect-Based Sentiment Analysis** - Analyzes 7 tourism aspects (scenery, safety, facilities, value, accessibility, experience, service)
+- **76 Destinations** - Comprehensive insights for Sri Lanka tourist locations
+- **Smart Recommendations** - Match destinations to user preferences
+- **Location Comparison** - Compare multiple destinations side-by-side
+- **REST API** - Production-ready API for app integration
+- **Web Interface** - Interactive frontend for exploring insights
 
-### Running the Frontend
+---
 
-1. Install web dependencies:
+## 📋 Prerequisites
+
+- Python 3.9 or higher
+- pip (Python package manager)
+- 4GB RAM minimum (for processing 16,000+ reviews)
+
+---
+
+## 🚀 Quick Start Guide
+
+### Step 1: Clone/Download the Project
+
 ```bash
-pip install flask flask-cors python-dotenv requests
+# If using git
+git clone <repository-url>
+cd tourism-recommender-system
+
+# Or extract the downloaded zip file
 ```
 
-2. Configure environment variables (optional):
+### Step 2: Create Virtual Environment (Recommended)
+
 ```bash
-cp .env.example .env
-# Edit .env to add your API keys
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+
+# On Windows:
+venv\Scripts\activate
 ```
 
-3. Start the Flask server:
+### Step 3: Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Step 4: Download NLTK Data
+
+```bash
+python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords'); nltk.download('wordnet')"
+```
+
+### Step 5: Verify Dataset
+
+Make sure the dataset file exists:
+```bash
+ls dataset/Reviews.csv
+```
+
+### Step 6: Run the Application
+
 ```bash
 python app.py
 ```
 
-4. Open your browser to `http://localhost:5000`
+You should see:
+```
+✅ ABSA API routes registered
+🔄 Pre-initializing ABSA service...
+Starting Tourism Recommender API on 0.0.0.0:5001
+...
+Generated insights for 76 locations
+✅ ABSA service ready!
+```
 
-### Frontend Features
+### Step 7: Access the Application
 
-- **Interactive Map**: Visualize destinations on a Leaflet map of Sri Lanka
-- **User Selection**: Test with different user profiles (cold start, regular, frequent)
-- **Context Controls**: Adjust weather, season, holidays, and peak season settings
-- **Preference Filters**: Filter by travel style, budget, and distance
-- **Voting Strategy**: Compare weighted, Borda count, and confidence-based voting
-- **Real-time Metrics**: View inference time and model weight adjustments
-- **Model Info Panel**: See model sizes and configuration
+Open your browser and go to:
+- **Sentiment Analysis Dashboard**: http://127.0.0.1:5001/absa
+- **Recommender System**: http://127.0.0.1:5001/
 
-### API Endpoints
+> ⚠️ **Note**: First startup takes ~90 seconds to analyze all reviews. Wait for "✅ ABSA service ready!" message.
+
+---
+
+## 📊 Running Analysis Scripts
+
+### Run Sentiment Analysis Evaluation
+```bash
+python scripts/run_sentiment_analysis.py
+```
+
+### Run Aspect-Based Analysis
+```bash
+python scripts/run_aspect_analysis.py
+```
+
+---
+
+## 🔌 API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/` | GET | Main frontend page |
-| `/api/health` | GET | Health check |
-| `/api/destinations` | GET | List all destinations |
-| `/api/users` | GET | List sample users |
-| `/api/model-info` | GET | Model information |
-| `/api/recommend` | POST | Get recommendations |
+| `/api/absa/locations` | GET | Get all locations with ratings |
+| `/api/absa/locations/<name>` | GET | Get detailed insight for a location |
+| `/api/absa/locations/<name>/aspects` | GET | Get aspect scores for a location |
+| `/api/absa/recommend` | POST | Get smart recommendations |
+| `/api/absa/compare` | POST | Compare multiple locations |
+| `/api/absa/aspects` | GET | Get available aspects |
+| `/api/absa/aspects/stats` | GET | Get aspect statistics |
+| `/api/absa/analyze` | POST | Analyze a review text |
 
-### Example API Request
+### Example API Usage
 
 ```bash
-curl -X POST http://localhost:5000/api/recommend \
+# Get all locations
+curl http://127.0.0.1:5001/api/absa/locations
+
+# Get recommendations
+curl -X POST http://127.0.0.1:5001/api/absa/recommend \
   -H "Content-Type: application/json" \
-  -d '{
-    "user_id": "anonymous",
-    "latitude": 7.2906,
-    "longitude": 80.6337,
-    "weather": "sunny",
-    "season": "dry",
-    "is_holiday": false,
-    "is_peak_season": true,
-    "top_k": 5,
-    "voting_strategy": "weighted"
-  }'
+  -d '{"preferred_aspects": ["scenery", "safety"], "limit": 5}'
+
+# Compare locations
+curl -X POST http://127.0.0.1:5001/api/absa/compare \
+  -H "Content-Type: application/json" \
+  -d '{"locations": ["Galle Fort", "Sigiriya The Ancient Rock Fortress"]}'
+
+# Analyze a review
+curl -X POST http://127.0.0.1:5001/api/absa/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Beautiful scenery but very crowded and expensive entrance fee."}'
 ```
+
+---
+
+## 📁 Project Structure
+
+```
+tourism-recommender-system/
+├── app.py                      # Main Flask application
+├── requirements.txt            # Python dependencies
+├── .env                        # Environment variables
+├── dataset/
+│   └── Reviews.csv             # Tourism reviews dataset
+├── src/
+│   ├── aspect_sentiment.py     # ABSA core implementation
+│   ├── absa_api.py             # API service layer
+│   ├── sentiment_analysis.py   # Traditional ML sentiment
+│   ├── recommender_system.py   # Recommendation engine
+│   └── ...
+├── scripts/
+│   ├── run_sentiment_analysis.py
+│   └── run_aspect_analysis.py
+├── templates/
+│   ├── index.html              # Recommender frontend
+│   └── absa.html               # ABSA frontend
+├── data/                       # Generated outputs
+│   ├── aspect_statistics.csv
+│   └── location_insights.csv
+└── models/                     # Trained models
+```
+
+---
+
+## 🔧 Configuration
+
+Edit `.env` file to configure:
+
+```env
+# Flask Configuration
+FLASK_DEBUG=0                   # Set to 1 for development
+API_PORT=5001                   # Change port if needed
+
+# Model Configuration
+MODEL_PATH=models/
+DATA_PATH=dataset/
+```
+
+---
+
+## 📈 Results Summary
+
+| Metric | Value |
+|--------|-------|
+| Total Reviews Analyzed | 16,156 |
+| Locations Covered | 76 |
+| Aspects Tracked | 7 |
+| Best ML Model | Linear SVM (81.58% accuracy) |
+| Processing Time | ~90 seconds |
+
+### Aspect Statistics
+
+| Aspect | Mentions | Avg Sentiment |
+|--------|----------|---------------|
+| Experience & Activities | 10,756 | +0.200 |
+| Scenery & Views | 8,870 | +0.313 |
+| Accessibility | 7,938 | +0.174 |
+| Value for Money | 6,324 | +0.252 |
+| Facilities | 4,702 | +0.206 |
+| Safety & Crowds | 3,258 | +0.115 |
+| Service & Staff | 1,998 | +0.169 |
+
+---
+
+## 🐛 Troubleshooting
+
+### Port Already in Use
+```bash
+# Kill process on port 5001
+lsof -ti:5001 | xargs kill -9
+```
+
+### NLTK Data Not Found
+```bash
+python -c "import nltk; nltk.download('all')"
+```
+
+### Module Not Found
+```bash
+pip install -r requirements.txt --upgrade
+```
+
+### Slow First Load
+The first startup takes ~90 seconds to analyze 16,000+ reviews. This is normal. Subsequent API calls are instant.
+
+---
+
+## 📚 Research Documentation
+
+- `ABSA_RESEARCH.md` - Detailed research documentation
+- `SENTIMENT_ANALYSIS_RESEARCH.md` - Sentiment analysis methodology
+- `SENTIMENT_ANALYSIS_RESULTS.md` - Evaluation results
+
+---
+
+## 👨‍💻 Author
+
+[Your Name]
+[Your University]
+[Year]
+
+---
+
+## 📄 License
+
+This project is for academic research purposes.
